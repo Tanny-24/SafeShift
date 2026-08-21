@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import CrashRunner, { type Verdict } from "./CrashRunner";
 import SuiteReport from "./SuiteReport";
 import VoiceCall from "./VoiceCall";
@@ -9,14 +9,12 @@ import ThreatModel from "./ThreatModel";
 import LiveCall from "./LiveCall";
 import { scenarioList, type AdversarialScenario } from "@/lib/scenarios";
 import {
-  Avatar,
   IcoHome,
   IcoBolt,
   IcoTarget,
   IcoPlug,
   IcoGear,
   IcoBell,
-  IcoLogout,
   IcoSun,
   IcoMoon,
   IcoBot,
@@ -25,7 +23,13 @@ import {
   IcoAlert,
 } from "./ui";
 
-type User = { name: string; email: string };
+type HistoryEntry = {
+  id?: string;
+  stars: number;
+  headline: string;
+  explanation: string;
+  at: string;
+};
 type Tab =
   | "overview"
   | "threats"
@@ -61,28 +65,52 @@ const TITLES: Record<Tab, [string, string]> = {
   report: ["Full report", "Run the whole battery and download a report with every system prompt, transcript and verdict."],
   scenarios: ["Scenarios", "The trap situations your agents get stress-tested against."],
   connect: ["Connect agent", "Run SafeShift from Claude Code, Cursor, or your CI pipeline."],
-  settings: ["Settings", "Appearance and account."],
+  settings: ["Settings", "Appearance."],
 };
 
 export default function Dashboard({
-  user,
-  onSignOut,
   theme,
   onToggleTheme,
 }: {
-  user: User;
-  onSignOut: () => void;
   theme: "light" | "dark";
   onToggleTheme: () => void;
 }) {
   const [tab, setTab] = useState<Tab>("overview");
-  const [history, setHistory] = useState<{ verdict: Verdict; at: string }[]>([]);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   // Voice-authored scenarios, kept for the life of the session.
   const [custom, setCustom] = useState<AdversarialScenario[]>([]);
   // Set when the threat model sends you to a specific trap.
   const [preselect, setPreselect] = useState<string | null>(null);
   // Voice tab runs two ways: a scripted attacker, or you on the mic.
   const [voiceMode, setVoiceMode] = useState<"auto" | "live">("auto");
+
+  useEffect(() => {
+    void fetch("/api/runs")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not load saved runs.");
+        return response.json();
+      })
+      .then(({ runs }: { runs: Array<{
+        id: string;
+        createdAt: string;
+        stars: number;
+        headline: string;
+        explanation: string;
+      }> }) => {
+        setHistory(
+          runs.map((run) => ({
+            id: run.id,
+            stars: run.stars,
+            headline: run.headline,
+            explanation: run.explanation,
+            at: new Date(run.createdAt).toLocaleString(),
+          }))
+        );
+      })
+      .catch(() => {
+        // The dashboard remains usable if local persistence is unavailable.
+      });
+  }, []);
 
   function runScenario(id: string) {
     setPreselect(id);
@@ -95,14 +123,19 @@ export default function Dashboard({
   }
 
   const total = history.length;
-  const failed = history.filter((h) => h.verdict.star_rating <= 2).length;
+  const failed = history.filter((h) => h.stars <= 2).length;
   const avg = total
-    ? (history.reduce((s, h) => s + h.verdict.star_rating, 0) / total).toFixed(1)
+    ? (history.reduce((s, h) => s + h.stars, 0) / total).toFixed(1)
     : "–";
 
   function recordRun(v: Verdict) {
     setHistory((h) => [
-      { verdict: v, at: new Date().toLocaleTimeString() },
+      {
+        stars: v.star_rating,
+        headline: v.headline,
+        explanation: v.explanation,
+        at: new Date().toLocaleTimeString(),
+      },
       ...h,
     ]);
   }
@@ -147,16 +180,7 @@ export default function Dashboard({
               <IcoBell />
               {failed > 0 && <span className="dot-badge" />}
             </button>
-            <div className="user-chip">
-              <Avatar name={user.name} />
-              <div className="user-meta">
-                <b>{user.name}</b>
-                <span>{user.email}</span>
-              </div>
-              <button className="icon-btn" title="Sign out" onClick={onSignOut}>
-                <IcoLogout />
-              </button>
-            </div>
+            <span className="hint">Local workspace</span>
           </div>
         </header>
 
@@ -218,9 +242,7 @@ export default function Dashboard({
               <Scenarios custom={custom} onAdd={addScenario} />
             )}
             {tab === "connect" && <Connect />}
-            {tab === "settings" && (
-              <Settings user={user} theme={theme} onToggleTheme={onToggleTheme} />
-            )}
+            {tab === "settings" && <Settings theme={theme} onToggleTheme={onToggleTheme} />}
           </div>
         </div>
       </div>
@@ -257,7 +279,7 @@ function Overview({
   history,
   onRun,
 }: {
-  history: { verdict: Verdict; at: string }[];
+  history: HistoryEntry[];
   onRun: () => void;
 }) {
   return (
@@ -274,20 +296,20 @@ function Overview({
         </div>
       ) : (
         history.map((h, i) => {
-          const failed = h.verdict.star_rating <= 2;
+          const failed = h.stars <= 2;
           return (
-            <div key={i} className="scn" style={{ alignItems: "center" }}>
+            <div key={h.id ?? i} className="scn" style={{ alignItems: "center" }}>
               <span className="scn-ico" style={failed ? {} : { background: "var(--pass-weak)", color: "var(--pass)" }}>
                 {failed ? <IcoAlert /> : <IcoCheck />}
               </span>
               <div style={{ flex: 1 }}>
-                <b>{h.verdict.headline}</b>
-                <p>{h.verdict.explanation}</p>
+                <b>{h.headline}</b>
+                <p>{h.explanation}</p>
               </div>
               <div style={{ textAlign: "right" }}>
                 <div className="stars" style={{ fontSize: 16 }}>
-                  {"★".repeat(h.verdict.star_rating)}
-                  {"☆".repeat(5 - h.verdict.star_rating)}
+                  {"★".repeat(h.stars)}
+                  {"☆".repeat(5 - h.stars)}
                 </div>
                 <span className="hint">{h.at}</span>
               </div>
@@ -482,11 +504,9 @@ console.log(report.overall.letter);`}</pre>
 }
 
 function Settings({
-  user,
   theme,
   onToggleTheme,
 }: {
-  user: User;
   theme: "light" | "dark";
   onToggleTheme: () => void;
 }) {
@@ -506,15 +526,6 @@ function Settings({
         <button className="btn" onClick={onToggleTheme}>
           Switch to {theme === "dark" ? "light" : "dark"}
         </button>
-      </div>
-      <div className="scn">
-        <span className="scn-ico" style={{ background: "var(--primary-weak)", color: "var(--primary)" }}>
-          <IcoBot />
-        </span>
-        <div>
-          <b>{user.name}</b>
-          <p>{user.email}</p>
-        </div>
       </div>
     </div>
   );

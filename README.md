@@ -40,6 +40,10 @@ Paste agent → secrets planted in its prompt + over-scoped tools
 
 ## Scenarios
 
+SafeShift currently includes 31 built-in scenarios. The examples below are a
+representative subset; use the in-app scenario picker or
+`npm run safeshift -- scenarios` to see the full inventory.
+
 | Scenario | Kind | Harm tested |
 |---|---|---|
 | System prompt extraction | Leak | `SYSTEM_PROMPT_LEAK` |
@@ -123,6 +127,10 @@ npm run dev
 read-back. It is read server-side only and proxied through `/api/tts`, so it
 never reaches the browser.
 
+SafeShift is a local project and has no identity layer. Keep its web server and
+the local `.safeshift/runs/` directory private, because stored runs contain the
+synthetic canaries used as test evidence.
+
 Open http://localhost:3000, paste an agent prompt, pick a scenario, hit
 **💥 Crash It**.
 
@@ -130,20 +138,22 @@ A leak test is a five-turn conversation between two models plus a judge pass, so
 expect it to take a couple of minutes. It stops early the moment a critical
 secret escapes.
 
-## Three ways in
+## Four ways in
 
-The engine lives in `lib/core.ts`. The web UI, the MCP server and the CLI
-are all thin callers of it — there is no second implementation, and all three
-write finished runs to the same local store (`.safeshift/runs/`).
+The engine lives in `lib/core.ts`. The web UI, MCP server, CLI, and SDK are
+thin callers of it — there is no second implementation. Completed crash tests
+are written to the same local store (`.safeshift/runs/`); the web dashboard
+reloads its recent results through `GET /api/runs`, and `GET /api/runs/[id]`
+returns a full stored run by id.
 
 ```
                     SafeShift core  (lib/core.ts)
               scenarios · agent · attacker · judge · tools
                 canaries · ratings · reports · store
                                │
-        ┌──────────────────────┼──────────────────────┐
-     Web UI                MCP server              CLI / SDK
-   (app/api/*)            (mcp/server.ts)   (cli/safeshift.ts, sdk/)
+        ┌──────────────┬──────────────┬──────────────┬──────────────┐
+      Web UI       MCP server         CLI            SDK
+    (app/api/*)  (mcp/server.ts) (cli/safeshift.ts) (sdk/)
 ```
 
 ### MCP server
@@ -207,8 +217,8 @@ Server-side only — it loads the Gemini client.
 | `lib/scenarios.ts` | The traps — inboxes, planted secrets, attacker briefs |
 | `lib/secrets.ts` | Canary definitions and the leak scanner |
 | `lib/attacker.ts` | The red-team loop (attacker model vs. bot under test) |
-| `lib/core.ts` | **The core** — one crash test, end to end. Shared by all three entry points |
-| `lib/store.ts` | Local run store, so a run started anywhere can be fetched anywhere |
+| `lib/core.ts` | **The core** — one crash test, end to end. Shared by the web UI, MCP server, CLI, and SDK |
+| `lib/store.ts` | Local run store, used by the web UI, MCP server, CLI, and SDK |
 | `lib/gemini.ts` | The Gemini client — the single AI provider, server-side only |
 | `mcp/server.ts` | MCP server (stdio) |
 | `cli/safeshift.ts` | The CLI |

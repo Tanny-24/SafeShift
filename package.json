@@ -8,6 +8,7 @@
     "dev": "NODE_USE_ENV_PROXY=1 next dev",
     "build": "next build",
     "start": "NODE_USE_ENV_PROXY=1 next start",
+    "test": "node --import tsx --test tests/*.test.ts",
     "lint": "next lint",
     "mcp": "NODE_USE_ENV_PROXY=1 tsx mcp/server.ts",
     "safeshift": "NODE_USE_ENV_PROXY=1 tsx cli/safeshift.ts"

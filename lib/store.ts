@@ -28,6 +28,8 @@ export type RunSummary = {
   scenarioId: string;
   label: string;
   stars: number;
+  headline: string;
+  explanation: string;
   failed: boolean;
   leaks: number;
 };
@@ -104,6 +106,8 @@ export function summarizeRun(run: StoredRun): RunSummary {
     scenarioId: run.scenarioId,
     label: run.label,
     stars: run.verdict.star_rating,
+    headline: run.verdict.headline,
+    explanation: run.verdict.explanation,
     failed: run.failed,
     leaks: run.verdict.leaks.length,
   };
