@@ -5,7 +5,12 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, readdir, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { AgentSpec } from "./agentSpec";
+import {
+  hashAgentSpec,
+  normalizeAgentSpec,
+  validateAgentSpec,
+  type AgentSpec,
+} from "./agentSpec";
 import type { ScenarioReport } from "./core";
 import { safeShiftHome } from "./store";
 
@@ -67,9 +72,22 @@ function validateBaseline(value: unknown, source: string): Baseline {
   if (record.version !== 1 || typeof record.name !== "string" || typeof record.specHash !== "string") {
     throw new BaselineError(`Baseline "${source}" has an unsupported or malformed shape.`);
   }
-  safeHash(record.specHash);
+  const specHash = safeHash(record.specHash);
   if (!record.spec || typeof record.spec !== "object" || !record.scenarios || typeof record.scenarios !== "object") {
     throw new BaselineError(`Baseline "${source}" is missing its spec or scenarios.`);
+  }
+  let spec: AgentSpec;
+  try {
+    spec = validateAgentSpec(record.spec);
+  } catch (error) {
+    throw new BaselineError(`Baseline "${source}" has an invalid agent spec: ${(error as Error).message}`);
+  }
+  if (hashAgentSpec(spec) !== specHash) {
+    throw new BaselineError(`Baseline "${source}" does not match the hash of its stored agent spec.`);
+  }
+  const displayName = record.name.replace(/\s+/g, " ").trim();
+  if (displayName !== normalizeAgentSpec(spec).name) {
+    throw new BaselineError(`Baseline "${source}" does not match the name of its stored agent spec.`);
   }
   for (const [id, scenario] of Object.entries(record.scenarios as Record<string, unknown>)) {
     if (!scenario || typeof scenario !== "object") {
@@ -105,13 +123,38 @@ async function readBaseline(file: string): Promise<Baseline> {
   }
 }
 
+function assertCompatibleBaseline(existing: Baseline, incoming: Baseline): void {
+  const existingIdentity = hashAgentSpec(existing.spec);
+  const incomingIdentity = hashAgentSpec(incoming.spec);
+  if (
+    existing.specHash !== incoming.specHash ||
+    existingIdentity !== incomingIdentity ||
+    normalizeAgentSpec(existing.spec).name !== normalizeAgentSpec(incoming.spec).name
+  ) {
+    throw new BaselineError(
+      "Existing baseline identity does not match the incoming agent spec; refusing to merge scenario results."
+    );
+  }
+}
+
 /** Write then rename, so a stopped process never leaves a partial baseline. */
 export async function saveBaseline(baseline: Baseline): Promise<string> {
   validateBaseline(baseline, "new baseline");
   const file = baselineFilePath(baseline.name, baseline.specHash);
+  const existing = await loadBaseline(baseline.name, baseline.specHash);
+  if (existing) assertCompatibleBaseline(existing, baseline);
+  const merged = existing
+    ? {
+        ...existing,
+        // Keep the original identity and creation time. Scenario entries are
+        // replaced whole, never shallow-merged, so stored evidence is intact.
+        scenarios: { ...existing.scenarios, ...baseline.scenarios },
+      }
+    : baseline;
+  validateBaseline(merged, existing ? "merged baseline" : "new baseline");
   await mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${randomUUID()}.tmp`;
-  await writeFile(temporary, JSON.stringify(baseline, null, 2) + "\n", "utf8");
+  await writeFile(temporary, JSON.stringify(merged, null, 2) + "\n", "utf8");
   await rename(temporary, file);
   return file;
 }
