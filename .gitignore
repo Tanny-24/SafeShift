@@ -1,0 +1,29 @@
+# dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# testing
+/coverage
+
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# local env files
+.env*.local
+
+# local SafeShift run data
+.safeshift/
+.crashtest/
+
+# TypeScript
+*.tsbuildinfo
+
+# OS
+.DS_Store
+# Next.js generated type shim (regenerated on every build)
+next-env.d.ts

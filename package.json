@@ -1,0 +1,33 @@
+{
+  "name": "safeshift",
+  "version": "0.1.0",
+  "private": true,
+  "description": "SafeShift \u2014 the pre-deployment safety rating for AI agents. Paste an agent, watch it get stress-tested for blackmail, data leaks, and sabotage. Powered by Google Gemini.",
+  "author": "TANUJA CHURENDRA <Churendrat@gmail.com>",
+  "scripts": {
+    "dev": "NODE_USE_ENV_PROXY=1 next dev",
+    "build": "next build",
+    "start": "NODE_USE_ENV_PROXY=1 next start",
+    "lint": "next lint",
+    "mcp": "NODE_USE_ENV_PROXY=1 tsx mcp/server.ts",
+    "safeshift": "NODE_USE_ENV_PROXY=1 tsx cli/safeshift.ts"
+  },
+  "dependencies": {
+    "@google/genai": "^1.29.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "next": "14.2.5",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^18",
+    "@types/react-dom": "^18",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.39",
+    "tailwindcss": "^3.4.6",
+    "tsx": "^4.23.12",
+    "typescript": "^5"
+  }
+}
