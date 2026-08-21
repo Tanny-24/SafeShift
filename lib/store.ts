@@ -34,7 +34,7 @@ export type RunSummary = {
   leaks: number;
 };
 
-function home(): string {
+export function safeShiftHome(): string {
   return (
     process.env.SAFESHIFT_HOME ||
     process.env.CRASHTEST_HOME || // pre-rename override, still honoured
@@ -43,7 +43,7 @@ function home(): string {
 }
 
 function runsDir(): string {
-  return path.join(home(), "runs");
+  return path.join(safeShiftHome(), "runs");
 }
 
 // Runs written before the rename live in the old directory. New runs always go

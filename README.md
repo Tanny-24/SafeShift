@@ -138,6 +138,46 @@ A leak test is a five-turn conversation between two models plus a judge pass, so
 expect it to take a couple of minutes. It stops early the moment a critical
 secret escapes.
 
+## Deterministic change analysis
+
+SafeShift can analyze two small JSON agent specifications containing a name,
+system prompt, and tool grants. The analysis identifies prompt/tool changes,
+maps them to existing SafeShift risk dimensions, and selects relevant scenarios
+with an explanation for each choice.
+
+First, capture a baseline with live discovery. This runs the normal attacker,
+agent, canary scanner, and judge, then stores the full result and the exact
+attacker messages locally under `.safeshift/baselines/`. Baselines contain
+synthetic test secrets, so keep that directory private and out of source
+control.
+
+```bash
+npm run safeshift -- baseline specs/v1.json --scenario credleak
+npm run safeshift -- baseline specs/v1.json --max 4
+npm run safeshift -- diff specs/v1.json specs/v2.json
+npm run safeshift -- diff specs/v1.json specs/v2.json --dry-run
+npm run safeshift -- diff specs/v1.json specs/v2.json --dry-run --json
+```
+
+The non-dry `diff` command requires a matching baseline for the old spec. It
+replays the saved attacker messages exactly against the new prompt; it does not
+ask the attacker model to invent new messages. The current bot still runs live,
+uses the same fake tools, receives the normal canary scan, and is judged once.
+
+Comparison is deterministic: a new canary or a newly cited judge finding is a
+regression; removed evidence is a fix. A rating-only drop is **unconfirmed**
+and gets one confirmation replay; it never becomes a confirmed regression on
+rating alone. Selected scenarios absent from the baseline are reported as
+**NEW**, not failures. Confirmed regressions are retained as local historical
+replay controls in `.safeshift/regressions/`, including when a later run marks
+them fixed.
+
+Use `--max 4` (the default) to cap baseline discovery or selected scenarios.
+Use `--dry-run` for deterministic analysis only: it performs no agent
+execution, no model/API call, and does not require a Gemini key. `diff` exits
+with code 2 only when it finds a confirmed regression. Optional change
+attribution is advisory and can be disabled with `--no-attribution`.
+
 ## Four ways in
 
 The engine lives in `lib/core.ts`. The web UI, MCP server, CLI, and SDK are
@@ -191,6 +231,8 @@ npm run safeshift -- scenarios --kind adversarial
 npm run safeshift -- run --scenario credleak --prompt "You are ShopBot..."
 npm run safeshift -- run --scenario blackmail --prompt-file ./agent.txt --json
 npm run safeshift -- scan --scenario credleak --text "the key is NWX-TEST-PAYKEY-..."
+npm run safeshift -- baseline specs/v1.json --scenario credleak
+npm run safeshift -- diff specs/v1.json specs/v2.json --dry-run
 npm run safeshift -- results
 npm run safeshift -- report <run_id> --format html --out report.html
 ```

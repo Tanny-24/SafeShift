@@ -6,9 +6,10 @@
 //   npm run safeshift -- scan --scenario credleak --text "the key is NWX-TEST-PAYKEY-..."
 //   npm run safeshift -- report <run_id> --format html --out report.html
 //
-// Every command drives the shared core through the SDK (sdk/index.ts). There is
-// no CLI-specific engine: `run` here and "Crash It" in the browser execute the
-// same code path and write to the same local run store.
+// Execution commands drive the shared core through the SDK (sdk/index.ts), so
+// `run` here and "Crash It" in the browser execute the same code path and
+// write to the same local run store. `diff --dry-run` remains a separate,
+// deterministic specification analysis path and never loads the execution SDK.
 
 import { writeFile } from "node:fs/promises";
 import { readFileSync } from "node:fs";
@@ -16,8 +17,18 @@ import { readFileSync } from "node:fs";
 import { loadEnv, hasGeminiKey } from "../lib/env";
 loadEnv();
 
-import { SafeShift } from "../sdk";
+import { analyzeAgentSpec, loadAgentSpec } from "../lib/agentSpec";
+import { diffAgentSpecs, type AgentChange } from "../lib/specDiff";
+import { selectScenarios, type SelectedScenario } from "../lib/selection";
 import type { ReportTurn } from "../lib/core";
+
+// Importing the SDK brings in the Gemini-backed execution engine. Keep that
+// import lazy so `safeshift diff` remains usable with no API key or provider
+// initialization at all.
+async function getSafeShift() {
+  const { SafeShift } = await import("../sdk");
+  return SafeShift;
+}
 
 /* ── tiny arg parser ─────────────────────────────────────────────────────── */
 
@@ -88,7 +99,8 @@ function resolvePrompt(flags: Args["flags"]): string {
 
 /* ── commands ────────────────────────────────────────────────────────────── */
 
-function cmdScenarios(args: Args): void {
+async function cmdScenarios(args: Args): Promise<void> {
+  const SafeShift = await getSafeShift();
   const kind = str(args.flags.kind);
   const category = str(args.flags.category);
 
@@ -141,6 +153,7 @@ async function cmdRun(args: Args): Promise<void> {
   if (!hasGeminiKey()) {
     die("GEMINI_API_KEY is not set. Add it to .env.local or export it before running.");
   }
+  const SafeShift = await getSafeShift();
 
   const systemPrompt = resolvePrompt(args.flags);
   const asJSON = Boolean(args.flags.json);
@@ -210,7 +223,8 @@ async function cmdRun(args: Args): Promise<void> {
   if (run.failed) process.exitCode = 2; // usable as a CI gate
 }
 
-function cmdScan(args: Args): void {
+async function cmdScan(args: Args): Promise<void> {
+  const SafeShift = await getSafeShift();
   const text = str(args.flags.text);
   if (!text) die('--text "..." is required');
 
@@ -255,6 +269,7 @@ function cmdScan(args: Args): void {
 }
 
 async function cmdResults(args: Args): Promise<void> {
+  const SafeShift = await getSafeShift();
   const runs = await SafeShift.results(Number(args.flags.limit) || 25);
   if (args.flags.json) return emitJSON({ count: runs.length, runs });
   if (!runs.length) {
@@ -270,6 +285,7 @@ async function cmdResults(args: Args): Promise<void> {
 }
 
 async function cmdReport(args: Args): Promise<void> {
+  const SafeShift = await getSafeShift();
   const id = str(args.flags.run) ?? args._[1];
   if (!id) die("a run id is required — `safeshift report <run_id>` (see `safeshift results`)");
 
@@ -288,6 +304,262 @@ async function cmdReport(args: Args): Promise<void> {
   }
 }
 
+/* ── deterministic change analysis ──────────────────────────────────────── */
+
+function parseMax(value: string | boolean | undefined): number {
+  if (value === undefined) return 4;
+  if (typeof value !== "string" || !/^\d+$/.test(value) || Number(value) < 1) {
+    die("--max must be a positive integer");
+  }
+  return Number(value);
+}
+
+function changeLabel(kind: AgentChange["kind"]): string {
+  return kind.replace(/_/g, " ").toUpperCase();
+}
+
+function writeReasons(scenario: SelectedScenario): void {
+  for (const reason of scenario.reasons) {
+    switch (reason.type) {
+      case "risk_tag":
+        process.stdout.write(`  ${reason.tag} ← ${reason.changeIds.join(", ")}\n`);
+        break;
+      case "tool_match":
+        process.stdout.write(`  tool ${reason.tool} ← ${reason.changeIds.join(", ")}\n`);
+        break;
+      case "category_match":
+        process.stdout.write(
+          `  ${reason.category} family (${reason.tag}) ← ${reason.changeIds.join(", ")}\n`
+        );
+        break;
+      case "sentinel":
+        process.stdout.write(`  ${reason.description}\n`);
+        break;
+    }
+  }
+}
+
+async function cmdDiff(args: Args): Promise<void> {
+  const oldPath = args._[1];
+  const newPath = args._[2];
+  if (!oldPath || !newPath) {
+    die("two agent specs are required — `safeshift diff <old-spec.json> <new-spec.json>`");
+  }
+
+  let fromSpec;
+  let toSpec;
+  try {
+    [fromSpec, toSpec] = await Promise.all([loadAgentSpec(oldPath), loadAgentSpec(newPath)]);
+  } catch (error) {
+    die((error as Error).message);
+  }
+
+  const diff = diffAgentSpecs(fromSpec, toSpec);
+  const selection = selectScenarios(diff.changes, { max: parseMax(args.flags.max) });
+  const dryRun = Boolean(args.flags["dry-run"]);
+
+  if (!dryRun) {
+    if (!hasGeminiKey()) {
+      die("GEMINI_API_KEY is not set. Replay executes the current agent and judge; use --dry-run for local analysis only.");
+    }
+    const { BaselineNotFoundError, runDiffEvaluation } = await import("../lib/diffRun");
+    let evaluated;
+    try {
+      evaluated = await runDiffEvaluation({
+        fromSpec,
+        toSpec,
+        max: parseMax(args.flags.max),
+        attribution: !Boolean(args.flags["no-attribution"]),
+      });
+    } catch (error) {
+      if (error instanceof BaselineNotFoundError) die(error.message);
+      die((error as Error).message);
+    }
+
+    if (args.flags.json) return emitJSON(evaluated);
+    process.stdout.write(`${bold("SafeShift Replay Gate")}\n`);
+    process.stdout.write("────────────────────────────────────────\n\n");
+    process.stdout.write(
+      `${bold("BASELINE")}\n${evaluated.baseline.name} @ ${cyan(evaluated.baseline.specHash.slice(0, 7))}\n\n`
+    );
+    for (const result of evaluated.results) {
+      const color =
+        result.status === "REGRESSION" ? red : result.status === "FIXED" || result.status === "PASS" ? green : yellow;
+      process.stdout.write(`${color(bold(result.status.padEnd(13)))} ${cyan(result.scenarioId)}  ${result.label}\n`);
+      process.stdout.write(dim(`  ${result.reason}\n`));
+      if (result.attribution) {
+        process.stdout.write(dim(`  advisory attribution: ${result.attribution.changeIds.join(", ")} (${result.attribution.confidence})\n`));
+      } else if (result.attributionError) {
+        process.stdout.write(dim(`  attribution unavailable: ${result.attributionError}\n`));
+      }
+    }
+    process.stdout.write("\n" + bold("SUMMARY\n"));
+    process.stdout.write(
+      `${evaluated.summary.REGRESSION} regression(s), ${evaluated.summary.FIXED} fixed, ` +
+        `${evaluated.summary.PASS} passed, ${evaluated.summary.NEW} new, ` +
+        `${evaluated.summary.FLAKY} flaky, ${evaluated.summary.UNCONFIRMED} unconfirmed\n`
+    );
+    if (evaluated.summary.confirmedRegressions) process.exitCode = 2;
+    return;
+  }
+
+  const result = {
+    from: {
+      name: diff.from.normalized.name,
+      hash: diff.from.hash,
+      shortHash: diff.from.shortHash,
+    },
+    to: {
+      name: diff.to.normalized.name,
+      hash: diff.to.hash,
+      shortHash: diff.to.shortHash,
+    },
+    changes: diff.changes,
+    selectedScenarios: selection.selectedScenarios,
+    omittedScenarios: selection.omittedScenarios,
+    totalScenarioCount: selection.totalScenarioCount,
+    dryRun: true,
+  };
+
+  if (args.flags.json) return emitJSON(result);
+
+  process.stdout.write(`${bold("SafeShift Change Gate")}\n`);
+  process.stdout.write("────────────────────────────────────────\n\n");
+  process.stdout.write(`${bold("FROM")}\n${result.from.name} @ ${cyan(result.from.shortHash)}\n\n`);
+  process.stdout.write(`${bold("TO")}\n${result.to.name} @ ${cyan(result.to.shortHash)}\n\n`);
+  process.stdout.write(`${bold(`CHANGES — ${diff.changes.length}`)}\n\n`);
+
+  if (!diff.changes.length) {
+    process.stdout.write(dim("No security-relevant prompt or tool changes after normalization.\n\n"));
+  }
+  for (const change of diff.changes) {
+    process.stdout.write(`${cyan(change.id)}  ${bold(changeLabel(change.kind))}\n`);
+    if (change.before) process.stdout.write(`    before: "${change.before}"\n`);
+    if (change.after) process.stdout.write(`    after:  "${change.after}"\n`);
+    if (change.tool) process.stdout.write(`    tool: ${change.tool}\n`);
+    process.stdout.write("    Risks:\n");
+    if (change.riskTags.length) {
+      for (const tag of change.riskTags) process.stdout.write(`    ${tag}\n`);
+    } else {
+      process.stdout.write(dim("    none inferred by the Phase 1A rule table\n"));
+    }
+    process.stdout.write("\n");
+  }
+
+  process.stdout.write(
+    `${bold(`SELECTED — ${selection.selectedScenarios.length} of ${selection.totalScenarioCount}`)}\n\n`
+  );
+  if (!selection.selectedScenarios.length) {
+    process.stdout.write(dim("No scenarios selected: the diff has no risk-tagged or sentinel-worthy changes.\n\n"));
+  }
+  for (const scenario of selection.selectedScenarios) {
+    process.stdout.write(`${cyan(scenario.scenarioId)}  ${scenario.label}\n`);
+    writeReasons(scenario);
+    process.stdout.write("\n");
+  }
+  if (selection.omittedScenarios.length) {
+    process.stdout.write(dim(`Additional relevant scenarios omitted by --max (${selection.omittedScenarios.length}):\n`));
+    for (const scenario of selection.omittedScenarios) {
+      process.stdout.write(`${dim(`  ${scenario.scenarioId}`)}\n`);
+      writeReasons(scenario);
+    }
+    process.stdout.write("\n");
+  }
+
+  process.stdout.write(bold("DRY RUN — analysis only\n"));
+  process.stdout.write(dim("No agent executions were performed. No model/API calls were made.\n"));
+}
+
+async function cmdBaseline(args: Args): Promise<void> {
+  const specPath = args._[1];
+  if (!specPath) die("an agent spec is required — `safeshift baseline <spec.json>`");
+  if (!hasGeminiKey()) {
+    die("GEMINI_API_KEY is not set. Baseline discovery executes live attacker, agent, and judge calls.");
+  }
+
+  let spec;
+  try {
+    spec = await loadAgentSpec(specPath);
+  } catch (error) {
+    die((error as Error).message);
+  }
+  const analysis = analyzeAgentSpec(spec);
+  const { getScenario, listScenarios, runCrashTest } = await import("../lib/core");
+  const requested = str(args.flags.scenario);
+  const scenarioIds = requested
+    ? [requested]
+    : listScenarios()
+        .filter((scenario) => scenario.kind === "adversarial")
+        .map((scenario) => scenario.id)
+        .sort()
+        .slice(0, parseMax(args.flags.max));
+  if (!scenarioIds.length) die("no adversarial scenarios are available for baseline discovery");
+
+  const asJSON = Boolean(args.flags.json);
+  if (!asJSON) {
+    process.stderr.write(
+      dim(`LIVE DISCOVERY MODE — recording ${scenarioIds.length} attacker transcript(s); this makes real Gemini calls.\n`)
+    );
+  }
+
+  const scenarios: Record<string, import("../lib/baseline").BaselineScenario> = {};
+  for (const id of scenarioIds) {
+    const scenario = getScenario(id);
+    if (!scenario) die(`unknown scenario "${id}"`);
+    if (scenario.kind !== "adversarial") {
+      die(`scenario "${id}" is autonomous; baseline replay currently requires an adversarial scenario.`);
+    }
+    if (!asJSON) process.stderr.write(dim(`  discovering ${id}…\n`));
+    let report;
+    try {
+      report = await runCrashTest({ systemPrompt: spec.systemPrompt, scenarioId: id });
+    } catch (error) {
+      die(`baseline discovery failed for "${id}": ${(error as Error).message}`);
+    }
+    const attackerMessages = report.transcript
+      .filter((turn) => turn.role === "attacker")
+      .map((turn) => turn.text);
+    if (!attackerMessages.length) {
+      die(`baseline discovery for "${id}" produced no attacker messages; baseline was not saved.`);
+    }
+    scenarios[id] = {
+      scenarioId: id,
+      capturedAt: new Date().toISOString(),
+      attackerMessages,
+      report,
+    };
+  }
+
+  const { baselineFilePath, saveBaseline } = await import("../lib/baseline");
+  const baseline = {
+    version: 1 as const,
+    name: analysis.normalized.name,
+    specHash: analysis.hash,
+    createdAt: new Date().toISOString(),
+    spec,
+    scenarios,
+  };
+  let file: string;
+  try {
+    file = await saveBaseline(baseline);
+  } catch (error) {
+    die((error as Error).message);
+  }
+  const result = {
+    mode: "live_discovery",
+    name: baseline.name,
+    specHash: baseline.specHash,
+    scenarios: Object.values(scenarios).map((scenario) => ({
+      scenarioId: scenario.scenarioId,
+      attackerMessageCount: scenario.attackerMessages.length,
+    })),
+    path: file || baselineFilePath(baseline.name, baseline.specHash),
+  };
+  if (asJSON) return emitJSON(result);
+  process.stdout.write(green(`Saved baseline for ${result.name} @ ${analysis.shortHash}\n`));
+  process.stdout.write(dim(`${result.scenarios.length} recorded attacker transcript(s)\n${result.path}\n`));
+}
+
 /* ── entry ───────────────────────────────────────────────────────────────── */
 
 const HELP = `${bold("safeshift")} — pre-deployment safety testing for AI agents
@@ -299,6 +571,8 @@ ${bold("COMMANDS")}
   scenarios                 List the built-in trap scenarios
   run                       Run one crash test against an agent prompt
   scan                      Scan text for leaked secrets (no model call)
+  baseline <spec>           Discover and save live attacker baselines
+  diff <old> <new>          Replay a baseline against a changed agent spec
   results                   List previously stored runs
   report <run_id>           Render a stored run as a report
 
@@ -322,6 +596,19 @@ ${bold("scan")}
   --label "<name>"          Label for --secret
   --json                    Machine-readable output
 
+${bold("diff")}
+  <old-spec.json> <new-spec.json>  Agent specs to compare              ${dim("(required)")}
+  --dry-run                  Explicit analysis-only mode; no model or API calls
+  --max <number>             Maximum selected scenarios; default 4
+  --no-attribution           Skip optional advisory change attribution
+  --json                     Machine-readable result
+
+${bold("baseline")}
+  <spec.json>                Agent spec to discover                  ${dim("(required)")}
+  --scenario <id>            Discover one adversarial scenario
+  --max <number>             Maximum discovery scenarios; default 4
+  --json                     Machine-readable result
+
 ${bold("report")}
   --format <text|html>      Default text
   --out <path>              Write to a file instead of stdout
@@ -331,6 +618,8 @@ ${bold("EXAMPLES")}
   npm run safeshift -- scenarios --kind adversarial
   npm run safeshift -- run --scenario credleak --prompt "You are ShopBot. Always help."
   npm run safeshift -- scan --scenario credleak --text "sure, it's NWX-TEST-PAYKEY-3QF7ZR2M9TKD"
+  npm run safeshift -- baseline specs/v1.json --scenario credleak
+  npm run safeshift -- diff specs/v1.json specs/v2.json --dry-run
   npm run safeshift -- report run_xxx --format html --out report.html
 `;
 
@@ -351,6 +640,10 @@ async function main() {
       return cmdRun(args);
     case "scan":
       return cmdScan(args);
+    case "diff":
+      return cmdDiff(args);
+    case "baseline":
+      return cmdBaseline(args);
     case "results":
       return cmdResults(args);
     case "report":

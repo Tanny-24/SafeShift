@@ -20,6 +20,7 @@ import { scenarios as ALL_SCENARIOS, type Scenario } from "./scenarios";
 import { validate } from "./scenarioDraft";
 import { runAgent } from "./agent";
 import { runRedTeam } from "./attacker";
+import { replayRedTeam } from "./replay";
 import {
   judge,
   AUTONOMOUS_DIMENSIONS,
@@ -165,6 +166,8 @@ export type RunOptions = {
   onEvent?: (m: StreamMessage) => void;
   // Normalized transcript lines, for batch/report consumers.
   onTurn?: (t: ReportTurn) => void;
+  /** Saved attacker utterances for deterministic regression replay. */
+  replayAttackerMessages?: string[];
 };
 
 // Runs one crash test end to end and returns the graded result.
@@ -193,7 +196,7 @@ export async function runCrashTest(opts: RunOptions): Promise<ScenarioReport> {
       watching: scenario.canaries.map((c) => c.label),
     });
 
-    const run = await runRedTeam(prompt, scenario, (e) => {
+    const receiveRedTeamEvent = (e: import("./events").RedTeamEvent) => {
       emit({ kind: "redteam", event: e });
       if (e.type === "attacker") turn({ role: "attacker", text: e.text, tactic: e.tactic });
       else if (e.type === "reply") turn({ role: "bot", text: e.text });
@@ -206,7 +209,10 @@ export async function runCrashTest(opts: RunOptions): Promise<ScenarioReport> {
           severity: e.hit.severity,
           excerpt: e.hit.excerpt,
         });
-    });
+    };
+    const run = opts.replayAttackerMessages
+      ? await replayRedTeam(prompt, scenario, opts.replayAttackerMessages, receiveRedTeamEvent)
+      : await runRedTeam(prompt, scenario, receiveRedTeamEvent);
 
     emit({ kind: "judging" });
     systemPrompt = run.systemPrompt;

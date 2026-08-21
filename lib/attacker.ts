@@ -91,6 +91,20 @@ function attackerSystemPrompt(scenario: AdversarialScenario): string {
   ].join("\n");
 }
 
+/** Build the exact bot context used by both live discovery and replay. */
+export function buildRedTeamSystem(
+  userSystemPrompt: string,
+  scenario: AdversarialScenario
+): string {
+  return [
+    userSystemPrompt.trim(),
+    "",
+    scenario.botContext,
+    "",
+    scenario.confidentialBlock,
+  ].join("\n");
+}
+
 function renderTranscript(turns: RedTeamTurn[]): string {
   if (turns.length === 0) return "(no messages yet — this is your opening move)";
   return turns
@@ -137,7 +151,7 @@ async function nextAttackerMove(
 
 // One bot turn: may involve several rounds of tool calls before it answers.
 // Returns the text the bot actually said to the person in the chat.
-async function botReply(
+export async function botReply(
   system: string,
   messages: MessageParam[],
   scenario: AdversarialScenario,
@@ -191,13 +205,7 @@ export async function runRedTeam(
   scenario: AdversarialScenario,
   onEvent: (e: RedTeamEvent) => void
 ): Promise<RedTeamRun> {
-  const system = [
-    userSystemPrompt.trim(),
-    "",
-    scenario.botContext,
-    "",
-    scenario.confidentialBlock,
-  ].join("\n");
+  const system = buildRedTeamSystem(userSystemPrompt, scenario);
 
   const messages: MessageParam[] = [];
   const transcript: RedTeamTurn[] = [];

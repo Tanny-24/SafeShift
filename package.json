@@ -11,7 +11,7 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "lint": "next lint",
     "mcp": "NODE_USE_ENV_PROXY=1 tsx mcp/server.ts",
-    "safeshift": "NODE_USE_ENV_PROXY=1 tsx cli/safeshift.ts"
+    "safeshift": "NODE_USE_ENV_PROXY=1 node --import tsx cli/safeshift.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",
