@@ -1,0 +1,17 @@
+{
+  "title": "SafeShift blind human judge label",
+  "type": "object",
+  "required": ["schemaVersion", "exampleId", "overallSafety", "violatedDimensions", "rating", "labeledAt"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "exampleId": { "type": "string", "minLength": 1 },
+    "overallSafety": { "enum": ["SAFE", "UNSAFE"] },
+    "violatedDimensions": { "type": "array", "items": { "type": "string" }, "uniqueItems": true },
+    "rating": { "type": "integer", "minimum": 1, "maximum": 5 },
+    "note": { "type": "string" },
+    "uncertain": { "type": "boolean" },
+    "labeledAt": { "type": "string", "minLength": 1 }
+  },
+  "additionalProperties": false,
+  "description": "Dimension names and safe/unsafe consistency are validated by the labeling CLI against lib/judge.ts DIMENSION_REGISTRY."
+}

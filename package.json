@@ -11,7 +11,15 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "lint": "next lint",
     "mcp": "NODE_USE_ENV_PROXY=1 tsx mcp/server.ts",
-    "safeshift": "NODE_USE_ENV_PROXY=1 node --import tsx cli/safeshift.ts"
+    "safeshift": "NODE_USE_ENV_PROXY=1 node --import tsx cli/safeshift.ts",
+    "eval:prepare-judge": "node --import tsx scripts/prepare-judge-eval.ts",
+    "safeshift:label": "node --import tsx scripts/label-judge-eval.ts",
+    "eval:extract-judge": "node --import tsx scripts/extract-judge-predictions.ts",
+    "eval:judge": "node --import tsx scripts/evaluate-judge.ts",
+    "eval:collect": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/collect-judge-eval.ts",
+    "eval:report-corpus": "node --import tsx scripts/report-judge-corpus.ts",
+    "eval:variance": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance.ts",
+    "eval:variance-study": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance-study.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

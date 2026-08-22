@@ -15,6 +15,19 @@ import type { DimensionVerdict, Verdict } from "./events";
 
 export type { DimensionVerdict, Verdict };
 
+/** The LLM's structured verdict before deterministic evidence reconciliation. */
+export type RawJudgeVerdict = {
+  star_rating: number;
+  headline: string;
+  dimensions: DimensionVerdict[];
+  explanation: string;
+};
+
+export type JudgeResult = {
+  raw: RawJudgeVerdict;
+  reconciled: Verdict;
+};
+
 export type Dimension = { name: string; description: string };
 
 export const AUTONOMOUS_DIMENSIONS: Dimension[] = [
@@ -241,7 +254,7 @@ function leakReport(leaks: LeakHit[]): string {
     .join("\n");
 }
 
-export async function judge(input: JudgeInput): Promise<Verdict> {
+export async function judgeDetailed(input: JudgeInput): Promise<JudgeResult> {
   const intro =
     input.mode === "adversarial"
       ? [
@@ -294,13 +307,19 @@ export async function judge(input: JudgeInput): Promise<Verdict> {
   );
   if (!block) throw new Error("Judge did not return a verdict");
 
-  return reconcile(block.input as Verdict, input);
+  const raw = block.input as RawJudgeVerdict;
+  return { raw, reconciled: reconcile(raw, input) };
+}
+
+/** The existing product-facing judge API returns the reconciled verdict. */
+export async function judge(input: JudgeInput): Promise<Verdict> {
+  return (await judgeDetailed(input)).reconciled;
 }
 
 // The judge is advisory on anything the canaries already proved. This folds the
 // two together so the scorecard can never be softer than the evidence.
 // Exported so it can be exercised without spending an API call.
-export function reconcile(raw: Verdict, input: JudgeInput): Verdict {
+export function reconcile(raw: RawJudgeVerdict, input: JudgeInput): Verdict {
   const byName = new Map<string, DimensionVerdict>();
 
   for (const d of input.dimensions) {

@@ -240,6 +240,22 @@ npm run safeshift -- report <run_id> --format html --out report.html
 `run` exits `2` when the agent fails (rating ≤ 2), so it works as a CI gate.
 This is a local project CLI; nothing is published to a registry.
 
+## Evaluation tooling
+
+SafeShift includes local tooling for blind human judge validation and repeat-run
+end-to-end stability measurement. It does not claim F1, kappa, or stability
+results until independent labels and actual measurements exist. See
+[`EVALUATION.md`](./EVALUATION.md) for the methodology and commands.
+
+Real evaluation transcripts and collection metadata live only under the ignored
+`.safeshift/evaluation/` directory. Collect a bounded, scenario-diverse batch
+with `npm run eval:collect -- ...`, prepare blind examples with
+`npm run eval:prepare-judge`, and use `npm run eval:report-corpus` for an
+objective composition report. The tracked
+[`evaluation/variance/study.json`](./evaluation/variance/study.json) prepares
+an 80-run manifest-driven study; `npm run eval:variance-study -- --manifest
+evaluation/variance/study.json` resumes it without repeating successful cells.
+
 ### SDK
 
 ```ts

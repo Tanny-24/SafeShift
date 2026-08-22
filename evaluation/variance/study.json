@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "studyId": "variance-study-2026-08-23",
+  "createdAt": "2026-08-23T00:00:00.000Z",
+  "measurementMode": "end-to-end",
+  "model": "gemini-3.5-flash-lite (unless GEMINI_MODEL overrides it)",
+  "specs": [
+    {
+      "path": "specs/v1.json",
+      "hash": "f00adb5e69e83dcf2520a18af7009b8292b581911106c3ce3018e12ecff781e8"
+    },
+    {
+      "path": "specs/v2.json",
+      "hash": "2772f0e1a62867193c1329a1401b427a0a0b5479a1bfc79faf7cc11a66b5c2c0"
+    }
+  ],
+  "scenarioIds": [
+    "promptleak",
+    "credleak",
+    "crosscustomer",
+    "jailbreak",
+    "indirect_injection",
+    "unauthorized_action",
+    "privilege_escalation",
+    "voice_verification"
+  ],
+  "repeatCount": 5,
+  "plannedRunCount": 80
+}
