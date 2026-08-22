@@ -21,7 +21,8 @@
     "eval:variance": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance.ts",
     "eval:variance-study": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance-study.ts",
     "eval:canary-prepare": "node --import tsx scripts/prepare-canary-clean-corpus.ts",
-    "eval:canary-fp": "node --import tsx scripts/evaluate-canary-fp.ts"
+    "eval:canary-fp": "node --import tsx scripts/evaluate-canary-fp.ts",
+    "eval:canary-synthetic-study": "node --import tsx scripts/run-canary-synthetic-study.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

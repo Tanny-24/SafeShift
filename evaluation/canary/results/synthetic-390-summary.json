@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "studyId": "canary-fp-full-2026-08-23",
+  "sourceType": "SYNTHETIC_KNOWN_CLEAN_STUDY",
+  "generatedAt": "2026-08-22T23:02:37.598Z",
+  "sanitization": "No raw corpus text, match excerpts, or canary values are included.",
+  "candidateExamples": 390,
+  "validCleanExamples": 390,
+  "rejectedExamples": 0,
+  "rejectionReasons": [],
+  "corpusFingerprint": "b2a828090fa773bae4723ca1ca0148fcc50c787085ec4c286db8f4d9466bf2ef",
+  "scannerConfigFingerprint": "caea943d222d2f138eb5856b7c76ba029bb78162aa843dddbed164ba189ff7d5",
+  "canaries": [
+    { "canaryId": "fp-alpha", "length": 17, "partialLength": 12, "severity": "critical", "dimension": "CREDENTIAL_LEAK" },
+    { "canaryId": "fp-beta", "length": 20, "partialLength": 14, "severity": "high", "dimension": "SYSTEM_PROMPT_LEAK" },
+    { "canaryId": "fp-gamma", "length": 17, "partialLength": null, "severity": "medium", "dimension": "PII_SPILLAGE" }
+  ],
+  "exampleLevel": { "flags": 0, "examples": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } },
+  "pairLevel": { "flags": 0, "pairs": 1170, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.0032726732465436564, "confidence": 0.95 } },
+  "totalScannerMatches": 0,
+  "matchKindDistribution": { "exact": 0, "partial": 0 },
+  "severityDistribution": { "critical": 0, "high": 0, "medium": 0 },
+  "perCategory": [
+    { "category": "benign_technical_explanation", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "code_snippet", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "configuration_text", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "hard_negative", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "identifiers_and_references", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "json_output", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "long_form_prose", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "ordinary_customer_support", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "payment_related_benign", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "punctuation_and_whitespace", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "security_discussion", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "short_answer", "examples": 30, "flags": 0, "fpr": 0 },
+    { "category": "urls_and_email", "examples": 30, "flags": 0, "fpr": 0 }
+  ],
+  "perCategoryWilson95": { "lower": 0, "upper": 0.113517091390478, "confidence": 0.95 },
+  "perCanary": [
+    { "canaryId": "fp-alpha", "flags": 0, "examples": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } },
+    { "canaryId": "fp-beta", "flags": 0, "examples": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } },
+    { "canaryId": "fp-gamma", "flags": 0, "examples": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } }
+  ],
+  "perPartialLength": [
+    { "partialLength": null, "flags": 0, "pairs": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } },
+    { "partialLength": 12, "flags": 0, "pairs": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } },
+    { "partialLength": 14, "flags": 0, "pairs": 390, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.009754175282651703, "confidence": 0.95 } }
+  ],
+  "hardNegative": { "examples": 30, "flags": 0, "fpr": 0, "wilson95": { "lower": 0, "upper": 0.113517091390478, "confidence": 0.95 } },
+  "positiveControl": { "total": 9, "detected": 9, "missed": 0 },
+  "sensitivity": [
+    { "partialLength": 6, "validCleanExamples": 390, "rejectedExamples": 0, "exampleLevelFlags": 0, "pairLevelFlags": 0 },
+    { "partialLength": 8, "validCleanExamples": 390, "rejectedExamples": 0, "exampleLevelFlags": 0, "pairLevelFlags": 0 },
+    { "partialLength": 10, "validCleanExamples": 390, "rejectedExamples": 0, "exampleLevelFlags": 0, "pairLevelFlags": 0 },
+    { "partialLength": 12, "validCleanExamples": 390, "rejectedExamples": 0, "exampleLevelFlags": 0, "pairLevelFlags": 0 }
+  ],
+  "interpretation": "MEASURED — SYNTHETIC. Zero false positives were observed in this synthetic known-clean study; this is not production false-positive performance."
+}

@@ -95,7 +95,8 @@ Wilson 95% intervals, and ratings use sample standard deviation.
 (`specs/v1.json`, `specs/v2.json`) × 3 repeats = at most 12 scenario-runs.
 
 **PENDING LIVE PILOT:** it was not run on 2026-08-23 because the same required
-Gemini connectivity check timed out. Consequently, there are no pilot safety
+Gemini connectivity check timed out (`curl: (28) SSL connection timeout`).
+Consequently, there are no pilot safety
 rates, detection rates, confidence intervals, or rating statistics to report.
 Any future interpretation must say “In this three-repeat pilot…” and must not
 overinterpret the sample as a stability benchmark.
@@ -191,22 +192,37 @@ This does **not** establish a production false-positive rate, prove zero future
 false positives, justify changing production thresholds, or motivate an
 entropy-style guard. No scanner behavior was changed for the pilot.
 
-### PLANNED full study
+### MEASURED — SYNTHETIC 390-example study
 
-[`evaluation/canary/study.json`](./evaluation/canary/study.json) prepares a
-390-example known-clean study: 30 examples in each of 13 categories, including
-support text, technical prose, JSON, code, identifiers, URLs/email, payment and
-configuration text, security discussion, varied formatting, and hard negatives.
-It stores no canary values. Supply an approved synthetic canary source when
-running it, preserve the corpus/configuration fingerprints, and do not execute
-it automatically.
+The deterministic generator created 390 candidate examples: 30 in each of the
+13 planned categories. This includes 30 hard negatives with canary-like shape,
+substitutions at least every fifth normalized character, punctuation/whitespace
+variants, reordered displays, and high-entropy-style identifiers. Admission
+accepted all 390 and rejected none.
 
-```bash
-npm run eval:canary-prepare -- --input <candidate-corpus.jsonl> --scenario <scenario-id>
-npm run eval:canary-fp -- --corpus <prepared-corpus.jsonl> --scenario <scenario-id> \
-  --study canary-fp-full-2026-08-23 --json
-```
+**MEASURED — SYNTHETIC — 2026-08-23:** production configuration produced zero
+example-level flags out of 390 (Wilson 95% upper bound 0.98%) and zero
+pair-level flags out of 1,170 (upper bound 0.33%). Each category, each canary,
+and each production partial-length bucket (12, 14, none) had zero observed
+flags. The hard-negative subset was 0/30 (upper bound 11.35%). There were no
+exact or partial matches and no severity-bearing matches.
 
-The raw corpus and result must remain local/ignored when they contain sensitive
-or synthetic security material. Use `--resume` only with matching corpus and
-scanner-configuration fingerprints.
+The separate positive-control detection sanity check detected 9/9 controls:
+exact, normalized, configured partial, and multiple-canary cases. It is not a
+recall benchmark and is not included in any false-positive denominator.
+
+### MEASURED — SYNTHETIC sensitivity study
+
+With separate derived configurations at partial lengths 6, 8, 10, and 12, the
+same 390 candidates were all admitted and produced zero flags in each run. This
+is a synthetic sensitivity result only; production partial-length defaults were
+not changed.
+
+The safe, machine-readable result artifact is
+[`evaluation/canary/results/synthetic-390-summary.json`](./evaluation/canary/results/synthetic-390-summary.json).
+It excludes raw corpus text, excerpts, and canary values.
+
+These measurements do **not** establish a production false-positive rate,
+prove zero future false positives, justify changing production thresholds, or
+motivate an entropy-style guard. The raw generated corpus and full runtime
+results remain local/ignored; use fingerprints to detect stale re-runs.
