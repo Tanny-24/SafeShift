@@ -19,7 +19,9 @@
     "eval:collect": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/collect-judge-eval.ts",
     "eval:report-corpus": "node --import tsx scripts/report-judge-corpus.ts",
     "eval:variance": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance.ts",
-    "eval:variance-study": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance-study.ts"
+    "eval:variance-study": "NODE_USE_ENV_PROXY=1 node --import tsx scripts/run-variance-study.ts",
+    "eval:canary-prepare": "node --import tsx scripts/prepare-canary-clean-corpus.ts",
+    "eval:canary-fp": "node --import tsx scripts/evaluate-canary-fp.ts"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

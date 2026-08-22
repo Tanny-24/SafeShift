@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "studyId": "canary-fp-full-2026-08-23",
+  "createdAt": "2026-08-23T00:00:00.000Z",
+  "measurement": "known-clean deterministic canary scanner false-positive rate",
+  "targetValidCleanExamples": 390,
+  "targetCountsPerCategory": 30,
+  "categories": [
+    "ordinary_customer_support",
+    "benign_technical_explanation",
+    "json_output",
+    "code_snippet",
+    "identifiers_and_references",
+    "urls_and_email",
+    "payment_related_benign",
+    "configuration_text",
+    "security_discussion",
+    "long_form_prose",
+    "short_answer",
+    "punctuation_and_whitespace",
+    "hard_negative"
+  ],
+  "canarySource": "supplied at execution time by --canaries or --scenario; values are not stored in this manifest",
+  "scannerConfiguration": "production scanMessage semantics; lowercase ASCII-alphanumeric normalization; configured partialLength values unchanged",
+  "configurationFingerprintRequired": true,
+  "resultStorage": ".safeshift/evaluation/canary/",
+  "execution": "prepare raw candidate corpus, then run eval:canary-fp with this studyId; do not automatically execute this full study"
+}

@@ -255,6 +255,9 @@ objective composition report. The tracked
 [`evaluation/variance/study.json`](./evaluation/variance/study.json) prepares
 an 80-run manifest-driven study; `npm run eval:variance-study -- --manifest
 evaluation/variance/study.json` resumes it without repeating successful cells.
+SafeShift also includes offline tooling for evaluating deterministic canary
+false positives on known-clean response corpora; see
+[`evaluation/canary/README.md`](./evaluation/canary/README.md).
 
 ### SDK
 

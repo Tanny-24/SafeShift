@@ -136,3 +136,77 @@ behavior, not evidence that the raw judge is correct.
 - End-to-end variance combines several stochastic components.
 - Phase 2 does not yet establish external-agent validity.
 - Live collection and pilot execution depend on Gemini network and quota health.
+
+## 12. Canary False-Positive Evaluation
+
+### Research question and scanner semantics
+
+Phase 2C asks: among responses explicitly intended to contain no configured
+SafeShift canary disclosure, how often does the deterministic scanner flag a
+canary? This is not an LLM-judge experiment. The benchmark calls production
+`scanMessage` directly for each clean-example × canary pair.
+
+The scanner lowercases text and retains ASCII letters and digits only; spaces,
+punctuation, and other characters are ignored for matching. It reports a
+normalized exact match, or a contiguous normalized window at the configured
+`partialLength`. Each canary can be reported once per transcript through the
+existing `seen` set. Severity is carried into deterministic reconciliation:
+critical, high, and medium hits cap ratings at 1, 2, and 3 respectively.
+
+### Clean corpus and metrics
+
+Every input record asserts `NO_CONFIGURED_CANARY`. Before admission, the
+workflow rejects exact, normalized, or configured partial matches using the
+current scanner semantics. Candidate text, prepared clean text, and results are
+stored separately. Results contain safe identifiers and match metadata only;
+they do not contain raw corpus text, excerpts, or canary values.
+
+The runner reports:
+
+- Example-level FPR: examples with any flag / valid known-clean examples.
+- Pair-level FPR: flags / valid known-clean example–canary pairs.
+- Per-canary, per-category, per-`partialLength`, severity, and match-kind
+  statistics.
+- Wilson 95% intervals for every rate.
+
+Rejected candidates are reported separately and are not part of either
+known-clean denominator. Hard negatives deliberately resemble canary shapes
+but must not meet the current partial-disclosure threshold. This protocol does
+not redefine a configured legitimate partial disclosure as a false positive.
+
+### SYNTHETIC PILOT — MEASURED
+
+The tracked synthetic pilot has 52 explicitly synthetic known-clean examples
+across 13 categories, including four hard negatives, and three obviously
+synthetic canaries with partial lengths 12, 14, and none. It is not a sample of
+production responses.
+
+**MEASURED — 2026-08-23:** preparation accepted 52/52 examples and rejected
+none. The scanner produced 0 example-level flags out of 52 and 0 pair-level
+flags out of 156. The Wilson 95% upper bounds are 6.88% at example level and
+2.40% at pair level. Each canary was 0/52; each partial-length bucket was 0/52;
+hard negatives were 0/4. There were no exact or partial matches.
+
+This does **not** establish a production false-positive rate, prove zero future
+false positives, justify changing production thresholds, or motivate an
+entropy-style guard. No scanner behavior was changed for the pilot.
+
+### PLANNED full study
+
+[`evaluation/canary/study.json`](./evaluation/canary/study.json) prepares a
+390-example known-clean study: 30 examples in each of 13 categories, including
+support text, technical prose, JSON, code, identifiers, URLs/email, payment and
+configuration text, security discussion, varied formatting, and hard negatives.
+It stores no canary values. Supply an approved synthetic canary source when
+running it, preserve the corpus/configuration fingerprints, and do not execute
+it automatically.
+
+```bash
+npm run eval:canary-prepare -- --input <candidate-corpus.jsonl> --scenario <scenario-id>
+npm run eval:canary-fp -- --corpus <prepared-corpus.jsonl> --scenario <scenario-id> \
+  --study canary-fp-full-2026-08-23 --json
+```
+
+The raw corpus and result must remain local/ignored when they contain sensitive
+or synthetic security material. Use `--resume` only with matching corpus and
+scanner-configuration fingerprints.
