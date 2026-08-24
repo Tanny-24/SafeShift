@@ -18,6 +18,10 @@ product-performance claim.
   targeting 60–80. It spans 11 scenario/dimension pairs, both selected specs,
   19 adversarial and 2 autonomous examples, 13 tool-active examples, and 2
   canary-evidence examples.
+- Batch 2: **PENDING — REAL:** the required one connectivity check on
+  2026-08-23 ended with `curl: (28) SSL connection timeout`. The bounded
+  collection command was not started, no Gemini call was retried, and the
+  corpus remains at 21 examples.
 - Human labels: 0.
 - Prediction availability: 21 reconciled, 18 raw, 3 historical raw-unavailable,
   and 0 missing source records.
@@ -44,6 +48,9 @@ npm run eval:judge -- --variant reconciled
   (all ratings 5). Aggregate observed unsafe rate was 0/12 with a 95% Wilson
   interval of [0.00%, 24.25%]. This is end-to-end behavior, not judge-only
   variance or a general stability claim.
+- Interpretation: the pilot does not invalidate a prior replay regression.
+  Replay uses fixed historical adversarial input; the pilot uses fresh
+  stochastic attacker, target, tool, and judge execution.
 - Full study: 80 planned end-to-end runs in
   [`variance/study.json`](./variance/study.json); successful plan cells resume
   safely and failures remain intentionally retryable.
@@ -73,11 +80,14 @@ The sanitized reproducible result is
    `dataleak`, `insubordination`, `crescendo`, `encoding_bypass`,
    `memory_regurgitation`, `scope_creep`, `voice_authority`, `voice_language`,
    and `voice_optics_live` across `v1` and `v2` (18 maximum runs).
-2. Perform blind human annotation; do not use model predictions as labels.
-3. Calculate raw and reconciled judge metrics only after annotation.
-4. Review the 12-run pilot, then explicitly run/resume the 80-run study when
+2. After Batch 2, use objective composition metadata to select—without
+   executing—a Batch 3 plan. Batch 3 is intentionally unplanned while Batch 2
+   has no measurement.
+3. Perform blind human annotation; do not use model predictions as labels.
+4. Calculate raw and reconciled judge metrics only after annotation.
+5. Review the 12-run pilot, then explicitly run/resume the 80-run study when
    ready; it was not run in this session.
-5. Decide whether a non-synthetic Phase 2C clean-response corpus is needed for
+6. Decide whether a non-synthetic Phase 2C clean-response corpus is needed for
    a broader false-positive claim.
 
 ## Completion definition

@@ -78,6 +78,12 @@ npm run eval:collect -- --spec specs/v1.json --spec specs/v2.json \
   --limit 18
 ```
 
+**PENDING — REAL Batch 2, 2026-08-23:** the required single connectivity gate
+in this session ended with `curl: (28) SSL connection timeout`. The command
+above was not started, no Gemini calls were retried, and the corpus remains at
+21 examples. Batch 3 must be selected from the post-Batch-2 objective
+composition report; it is not planned or executed while Batch 2 is blocked.
+
 ## 6. Judge Prediction Availability and Results
 
 **MEASURED — REAL, 2026-08-23:** all 21 prepared examples have reconciled
@@ -130,6 +136,11 @@ outcome, detected-dimension, canary, or rating disagreements between repeats.
 In this three-repeat pilot, that lack of observed variation does not isolate
 attacker, target, tool, or judge stochasticity and does not establish a general
 stability benchmark.
+
+The pilot must not be used to invalidate a prior replay regression. A replay
+regression test uses a fixed historical adversarial transcript; this end-to-end
+variance pilot uses fresh stochastic attacker, target, tool, and judge
+execution. They answer different questions.
 
 ## 9. Planned Full Variance Study
 
