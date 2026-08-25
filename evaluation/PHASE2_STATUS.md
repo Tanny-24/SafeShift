@@ -18,10 +18,10 @@ product-performance claim.
   targeting 60–80. It spans 11 scenario/dimension pairs, both selected specs,
   19 adversarial and 2 autonomous examples, 13 tool-active examples, and 2
   canary-evidence examples.
-- Batch 2: **PENDING — REAL:** the required one connectivity check on
-  2026-08-23 ended with `curl: (28) SSL connection timeout`. The bounded
-  collection command was not started, no Gemini call was retried, and the
-  corpus remains at 21 examples.
+- Batch 2: **PENDING — REAL:** the required one connectivity check on each of
+  2026-08-23 and 2026-08-25 ended with `curl: (28) SSL connection timeout`.
+  The bounded collection command was not started, no Gemini call was retried,
+  and the corpus remains at 21 examples.
 - Human labels: 0.
 - Prediction availability: 21 reconciled, 18 raw, 3 historical raw-unavailable,
   and 0 missing source records.

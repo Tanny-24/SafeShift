@@ -78,11 +78,12 @@ npm run eval:collect -- --spec specs/v1.json --spec specs/v2.json \
   --limit 18
 ```
 
-**PENDING — REAL Batch 2, 2026-08-23:** the required single connectivity gate
-in this session ended with `curl: (28) SSL connection timeout`. The command
-above was not started, no Gemini calls were retried, and the corpus remains at
-21 examples. Batch 3 must be selected from the post-Batch-2 objective
-composition report; it is not planned or executed while Batch 2 is blocked.
+**PENDING — REAL Batch 2:** the required single connectivity gates on
+2026-08-23 and 2026-08-25 ended with `curl: (28) SSL connection timeout`.
+The command above was not started, no Gemini calls were retried, and the corpus
+remains at 21 examples. Batch 3 must be selected from the post-Batch-2
+objective composition report; it is not planned or executed while Batch 2 is
+blocked.
 
 ## 6. Judge Prediction Availability and Results
 

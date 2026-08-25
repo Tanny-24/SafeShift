@@ -259,6 +259,10 @@ SafeShift also includes offline tooling for evaluating deterministic canary
 false positives on known-clean response corpora; see
 [`evaluation/canary/README.md`](./evaluation/canary/README.md).
 
+The provider-adapter work contemplated for a future Phase 3 is deliberately
+not implemented yet. Its current readiness assessment is in
+[`docs/PHASE3_READINESS.md`](./docs/PHASE3_READINESS.md).
+
 ### SDK
 
 ```ts
@@ -298,8 +302,9 @@ No database.
 
 One provider drives all three AI roles — the agent under test, the red-team
 attacker, and the judge. They are separated by prompt and tool schema, not by
-model. `lib/gemini.ts` is the only file that talks to the API; it is imported
-by API routes only, so `GEMINI_API_KEY` never reaches the browser.
+model. `lib/gemini.ts` is the only file that talks to the API; it is used only
+from server-side execution paths (API routes, CLI, MCP, SDK, and scripts), so
+`GEMINI_API_KEY` never reaches the browser.
 
 ## Research attribution
 

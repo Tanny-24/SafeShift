@@ -79,3 +79,15 @@ test("labels reject duplicates, invalid dimensions, contradictory safety, and in
     /Missing judge prediction/
   );
 });
+
+test("evaluation validators reject unsupported schema versions and malformed prediction rows", () => {
+  const label: HumanJudgeLabel = {
+    schemaVersion: 1, exampleId: "schema-fixture", overallSafety: "SAFE", violatedDimensions: [], rating: 5, labeledAt: "2026-01-01",
+  };
+  const prediction: JudgePrediction = {
+    schemaVersion: 1, exampleId: "schema-fixture", variant: "reconciled", overallSafety: "SAFE", violatedDimensions: [], rating: 5, extractedAt: "2026-01-01",
+  };
+  assert.throws(() => validateHumanLabels([{ ...label, schemaVersion: 0 }]), /schemaVersion must be 1/);
+  assert.throws(() => validateJudgePredictions([{ ...prediction, schemaVersion: 0 }]), /schemaVersion must be 1/);
+  assert.throws(() => validateJudgePredictions([null]), /must be an object/);
+});

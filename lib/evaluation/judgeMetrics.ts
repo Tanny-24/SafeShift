@@ -3,6 +3,7 @@
 // repeated. Undefined ratios are represented as null, never NaN.
 
 import { DIMENSION_REGISTRY } from "../judge";
+import { EVALUATION_SCHEMA_VERSION } from "./types";
 import type {
   BinaryCounts,
   ClassificationMetrics,
@@ -62,6 +63,9 @@ export function validateHumanLabels(values: unknown[]): HumanJudgeLabel[] {
   const seen = new Set<string>();
   return values.map((value, index) => {
     if (!isRecord(value)) throw new Error(`Human label ${index + 1} must be an object.`);
+    if (value.schemaVersion !== EVALUATION_SCHEMA_VERSION) {
+      throw new Error(`Human label ${index + 1}.schemaVersion must be ${EVALUATION_SCHEMA_VERSION}.`);
+    }
     const exampleId = validateId(value.exampleId, `Human label ${index + 1}.exampleId`);
     if (seen.has(exampleId)) throw new Error(`Duplicate human label for example "${exampleId}".`);
     seen.add(exampleId);
@@ -87,34 +91,41 @@ export function validateHumanLabels(values: unknown[]): HumanJudgeLabel[] {
 
 export function validateJudgePredictions(values: unknown[], variant?: PredictionVariant): JudgePrediction[] {
   const seen = new Set<string>();
-  return values
-    .filter((value): value is Record<string, unknown> => isRecord(value) && (!variant || value.variant === variant))
-    .map((value, index) => {
-      const exampleId = validateId(value.exampleId, `Judge prediction ${index + 1}.exampleId`);
-      const rowVariant = value.variant;
-      if (rowVariant !== "raw" && rowVariant !== "reconciled") {
-        throw new Error(`Judge prediction ${exampleId}.variant must be raw or reconciled.`);
-      }
-      const duplicateKey = `${rowVariant}\u0000${exampleId}`;
-      if (seen.has(duplicateKey)) throw new Error(`Duplicate ${rowVariant} judge prediction for example "${exampleId}".`);
-      seen.add(duplicateKey);
-      const overallSafety = validateSafety(value.overallSafety, `Judge prediction ${exampleId}.overallSafety`);
-      const violatedDimensions = validateDimensions(value.violatedDimensions, `Judge prediction ${exampleId}.violatedDimensions`);
-      validateConsistency(overallSafety, violatedDimensions, `Judge prediction ${exampleId}.overallSafety`);
-      const rating = validateRating(value.rating, `Judge prediction ${exampleId}.rating`);
-      if (typeof value.extractedAt !== "string" || !value.extractedAt.trim()) {
-        throw new Error(`Judge prediction ${exampleId}.extractedAt must be a non-empty string.`);
-      }
-      return {
-        schemaVersion: 1,
-        exampleId,
-        variant: rowVariant,
-        overallSafety,
-        violatedDimensions,
-        rating,
-        extractedAt: value.extractedAt,
-      };
+  const predictions: JudgePrediction[] = [];
+  for (let index = 0; index < values.length; index++) {
+    const value = values[index];
+    if (!isRecord(value)) throw new Error(`Judge prediction ${index + 1} must be an object.`);
+    const rowVariant = value.variant;
+    if (rowVariant !== "raw" && rowVariant !== "reconciled") {
+      throw new Error(`Judge prediction ${index + 1}.variant must be raw or reconciled.`);
+    }
+    if (value.schemaVersion !== EVALUATION_SCHEMA_VERSION) {
+      throw new Error(`Judge prediction ${index + 1}.schemaVersion must be ${EVALUATION_SCHEMA_VERSION}.`);
+    }
+    if (variant && rowVariant !== variant) continue;
+
+    const exampleId = validateId(value.exampleId, `Judge prediction ${index + 1}.exampleId`);
+    const duplicateKey = `${rowVariant}\u0000${exampleId}`;
+    if (seen.has(duplicateKey)) throw new Error(`Duplicate ${rowVariant} judge prediction for example "${exampleId}".`);
+    seen.add(duplicateKey);
+    const overallSafety = validateSafety(value.overallSafety, `Judge prediction ${exampleId}.overallSafety`);
+    const violatedDimensions = validateDimensions(value.violatedDimensions, `Judge prediction ${exampleId}.violatedDimensions`);
+    validateConsistency(overallSafety, violatedDimensions, `Judge prediction ${exampleId}.overallSafety`);
+    const rating = validateRating(value.rating, `Judge prediction ${exampleId}.rating`);
+    if (typeof value.extractedAt !== "string" || !value.extractedAt.trim()) {
+      throw new Error(`Judge prediction ${exampleId}.extractedAt must be a non-empty string.`);
+    }
+    predictions.push({
+      schemaVersion: EVALUATION_SCHEMA_VERSION,
+      exampleId,
+      variant: rowVariant,
+      overallSafety,
+      violatedDimensions,
+      rating,
+      extractedAt: value.extractedAt,
     });
+  }
+  return predictions;
 }
 
 function ratio(numerator: number, denominator: number): number | null {

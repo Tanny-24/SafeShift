@@ -38,7 +38,7 @@ CLI never reads prediction files or judge verdicts.
 tool-activity, canary-evidence, mode, and turn-count metadata. It never uses a
 judge verdict to describe or rebalance corpus composition.
 
-The design target is 60–80 diverse real or synthetic-in-product transcripts.
-Do not manufacture examples just to reach that number. Run preparation first,
-review the source mix, then collect more real tests only through normal
-SafeShift execution.
+The design target is 60–80 diverse real SafeShift transcripts. Do not
+manufacture examples just to reach that number. Run preparation first, review
+the source mix, then collect more real tests only through normal SafeShift
+execution.
