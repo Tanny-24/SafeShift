@@ -161,8 +161,8 @@ export default function Dashboard({
           ))}
         </nav>
         <div className="rail-foot">
-          <div className="conn-dot ok" />
-          <span>Gemini engine ready</span>
+          <div className="conn-dot" />
+          <span>Gemini required for live tests</span>
         </div>
       </aside>
 

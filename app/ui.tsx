@@ -10,12 +10,13 @@ const s = {
 };
 const mk =
   (path: React.ReactNode, box = 24) =>
-  (props: React.SVGProps<SVGSVGElement>) =>
-    (
+  function Icon(props: React.SVGProps<SVGSVGElement>) {
+    return (
       <svg width="18" height="18" viewBox={`0 0 ${box} ${box}`} {...s} {...props}>
         {path}
       </svg>
     );
+  };
 
 export const IcoHome = mk(<path d="M4 11 12 4l8 7M6 10v9h12v-9" />);
 export const IcoBolt = mk(<path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z" />);
